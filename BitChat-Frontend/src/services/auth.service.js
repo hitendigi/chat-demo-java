@@ -3,9 +3,9 @@ import axios from "axios";
 const API_URL = "https://localhost:8888/api/auth/";
 
 class AuthService {
-  login(username, password) {
+  login(username, name) {
     return axios
-      .post(API_URL + "signin", { username, password })
+      .post(API_URL + "signin", { username, name })
       .then((response) => {
         if (response.data.accessToken) {
           console.log('jwt token : ' + response.data.accessToken);

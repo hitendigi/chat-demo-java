@@ -14,16 +14,19 @@ public class UserDetailsImpl implements UserDetails {
 	private static final long serialVersionUID = 1L;
 
 	private UUID id;
-
+	
+	private String name;
+	
 	private String username;
 	
 	private String email;
-
+	
 	@JsonIgnore
 	private String password;
 
-	public UserDetailsImpl(UUID id, String username, String email, String password) {
+	public UserDetailsImpl(UUID id, String name, String username, String email, String password) {
 		this.id = id;
+		this.name = name;
 		this.username = username;
 		this.password = password;
 		this.email = email;
@@ -31,7 +34,7 @@ public class UserDetailsImpl implements UserDetails {
 
 	public static UserDetailsImpl build(User user) {
 
-		return new UserDetailsImpl(user.getId(), user.getUsername(), user.getEmail(), user.getPassword());
+		return new UserDetailsImpl(user.getId(), user.getName(), user.getUsername(), user.getEmail(), user.getPassword());
 	}
 
 	public UUID getId() {
@@ -101,6 +104,14 @@ public class UserDetailsImpl implements UserDetails {
 
 	public void setEmail(String email) {
 		this.email = email;
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
 	}
 	
 	
