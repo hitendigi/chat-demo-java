@@ -2,11 +2,22 @@ package com.bitchat.request;
 
 public class SignupRequest {
 
+	private String name;
+	
 	private String username;
 
 	private String email;
 
 	private String password;
+
+	
+	public String getName() {
+		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
 
 	public String getUsername() {
 		return username;

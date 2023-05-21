@@ -9,57 +9,40 @@ import javax.persistence.Transient;
 @Table(name = "Users") // because a table with this class name may exist (reserved names)
 public class User extends BaseModel implements Comparable<User> {
 
-    @Column(nullable = false, unique = true, length = 100)
+	@Column(length = 100)
+    private String name;
+	
+	@Column(nullable = false, unique = true, length = 100)
     private String username;
 
-    public void setUsername(String username) {
-        this.username = username.toLowerCase().trim();
-    }
-
+    @Column(length = 100)
+    private String password;
+    
+    @Column(length = 100)
+    private String email;
+    
     public User(){
     	
     }
     
-    public User(String username, String email, String password){
+    public User(String name, String username, String email, String password){
+    	this.name = name;
     	this.username = username;
     	this.email = email;
     	this.password = password;
     }
-    
-    @Column(length = 100)
-    private String password;
 
-    @Column(length = 100)
-    private String firstname;
-
-    @Column(length = 100)
-    private String lastname;
-    
-    @Column(length = 100)
-    private String email;
-
-    @Transient
-    private Boolean rememberMe;
-
-    public static String validateFirstname(String s) {
-        int lb = 1, ub = 90;
-        if (s.length() < lb || s.length() > ub) {
-            return "Firstname must be at least " + lb + " at most " + ub + " characters";
-        } else {
-            if (hasIllegalCharacters(s)) {
-                return "Firstname includes illegal characters";
-            }
-            return null;
-        }
+    public void setUsername(String username) {
+        this.username = username.toLowerCase().trim();
     }
-
-    public static String validateLastname(String s) {
+    
+    public static String validateName(String s) {
         int lb = 1, ub = 90;
         if (s.length() < lb || s.length() > ub) {
-            return "Lastname must be at least " + lb + " at most " + ub + " characters";
+            return "Name must be at least " + lb + " at most " + ub + " characters";
         } else {
             if (hasIllegalCharacters(s)) {
-                return "Lastname includes illegal characters";
+                return "Name includes illegal characters";
             }
             return null;
         }
@@ -102,10 +85,7 @@ public class User extends BaseModel implements Comparable<User> {
     }
 
     public static String validateAll(User user) {
-        String problem = User.validateFirstname(user.getFirstname());
-        if (problem == null) {
-            problem = User.validateLastname(user.getLastname());
-        }
+        String problem = User.validateName(user.getName());
         if (problem == null) {
             problem = User.validateUsername(user.getUsername());
         }
@@ -121,7 +101,7 @@ public class User extends BaseModel implements Comparable<User> {
     }
 
     public String getPresentation() {
-        return firstname + " " + lastname;
+        return name;
     }
 
 	public String getPassword() {
@@ -132,28 +112,13 @@ public class User extends BaseModel implements Comparable<User> {
 		this.password = password;
 	}
 
-	public String getFirstname() {
-		return firstname;
+
+	public String getName() {
+		return name;
 	}
 
-	public void setFirstname(String firstname) {
-		this.firstname = firstname;
-	}
-
-	public String getLastname() {
-		return lastname;
-	}
-
-	public void setLastname(String lastname) {
-		this.lastname = lastname;
-	}
-
-	public Boolean getRememberMe() {
-		return rememberMe;
-	}
-
-	public void setRememberMe(Boolean rememberMe) {
-		this.rememberMe = rememberMe;
+	public void setName(String name) {
+		this.name = name;
 	}
 
 	public String getUsername() {

@@ -37,6 +37,16 @@ const vusername = (value) => {
   }
 };
 
+const vname = (value) => {
+  if (value.length < 3 || value.length > 20) {
+    return (
+      <div className="alert alert-danger" role="alert">
+        The name must be between 3 and 20 characters.
+      </div>
+    );
+  }
+};
+
 const vpassword = (value) => {
   if (value.length < 6 || value.length > 40) {
     return (
@@ -51,11 +61,13 @@ class Register extends Component {
   constructor(props) {
     super(props);
     this.handleRegister = this.handleRegister.bind(this);
+    this.onChangeName = this.onChangeName.bind(this);
     this.onChangeUsername = this.onChangeUsername.bind(this);
     this.onChangeEmail = this.onChangeEmail.bind(this);
     this.onChangePassword = this.onChangePassword.bind(this);
 
     this.state = {
+      name : "",
       username: "",
       email: "",
       password: "",
@@ -68,6 +80,12 @@ class Register extends Component {
       username: e.target.value,
     });
   }
+
+  onChangeName(e) {
+      this.setState({
+        name: e.target.value,
+      });
+    }
 
   onChangeEmail(e) {
     this.setState({
@@ -93,7 +111,7 @@ class Register extends Component {
     if (this.checkBtn.context._errors.length === 0) {
       this.props
         .dispatch(
-          register(this.state.username, this.state.email, this.state.password)
+          register(this.state.name, this.state.username, this.state.email, this.state.password)
         )
         .then(() => {
           this.setState({
@@ -127,6 +145,17 @@ class Register extends Component {
           >
             {!this.state.successful && (
               <div>
+                <div className="form-group">
+                  <label htmlFor="name">Name</label>
+                  <Input
+                    type="text"
+                    className="form-control"
+                    name="name"
+                    value={this.state.name}
+                    onChange={this.onChangeName}
+                    validations={[required, vname]}
+                  />
+                </div>
                 <div className="form-group">
                   <label htmlFor="username">Username</label>
                   <Input
