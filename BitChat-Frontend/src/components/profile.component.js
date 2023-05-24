@@ -1,10 +1,11 @@
 import React, { Component } from "react";
 import { Redirect } from 'react-router-dom';
 import { connect } from "react-redux";
+import WebSocketService from '../services/WebSocketService';
 
 class Profile extends Component {
 
- 
+
   render() {
 
     const { user: currentUser } = this.props;
@@ -26,9 +27,24 @@ class Profile extends Component {
         <a href="#"><i class="fa fa-twitter"></i></a>
         <a href="#"><i class="fa fa-linkedin"></i></a>
         <a href="#"><i class="fa fa-facebook"></i></a>
+
+        <p>
+        Message : <input type="text"></input> <input type="button" value="Send"></input>
+        </p>
           </div>
     );
+
   }
+}
+
+function renderUser(){
+    const user = JSON.parse(localStorage.getItem("user"));
+    if(user){
+        console.log('user: ' + user.accessToken)
+        const token = 'your-jwt-token';
+        const webSocketService = new WebSocketService(user.accessToken);
+            webSocketService.connect();
+    }
 }
 
 function mapStateToProps(state) {
@@ -37,5 +53,7 @@ function mapStateToProps(state) {
     user,
   };
 }
+
+renderUser();
 
 export default connect(mapStateToProps)(Profile);

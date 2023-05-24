@@ -1,16 +1,12 @@
 package com.bitchat.controller;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,7 +19,6 @@ import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.WebSocketMessage;
 import org.springframework.web.socket.WebSocketSession;
 
-import com.bitchat.config.HttpInterceptor;
 import com.bitchat.model.Message;
 import com.bitchat.model.Session;
 import com.bitchat.model.UnreadMessageCounter;
@@ -54,9 +49,6 @@ public class WebsocketController implements WebSocketHandler {
     private UnreadMessageCounterRepository unreadMessageCounterRepository;
 
     @Autowired
-    private HttpInterceptor httpInterceptor;
-
-    @Autowired
     @Value("${loadingMessagesChunksize}")
     public int loadingMessagesChunksize;
 
@@ -70,21 +62,12 @@ public class WebsocketController implements WebSocketHandler {
         try {
             lock.lock();
             Session session = getSession(wss);
-            if ((session != null) && (session.getUser() != null)) {
-                Session oldSession = sessionMapFromUN.get(session.getUser().getUsername());
-                if (oldSession != null) {
-                    if (oldSession.getWebSocketSession().isOpen()) {
-                        oldSession.getWebSocketSession().sendMessage(new TextMessage("redirect\n/"));
-                    }
-                    removeWebSocketSession(oldSession.getWebSocketSession());
-                }
-                session.setWebSocketSession(wss);
-                sessionMapFromWSS.put(wss.getId(), session);
-                sessionMapFromUN.put(session.getUser().getUsername(), session);
-                session.setOtherSideUsername(Constants.broadcastUsername);
-                changePage(session);
-                session.getWebSocketSession().sendMessage(new TextMessage(
+            
+            if(session != null){
+            	session.setWebSocketSession(wss);
+            	session.getWebSocketSession().sendMessage(new TextMessage(
                         createUsersListUIComponent(session.getUser().getUsername(), session.getOtherSideUsername())));
+            	
             }
         } finally {
             lock.unlock();
@@ -95,10 +78,7 @@ public class WebsocketController implements WebSocketHandler {
     public void handleMessage(WebSocketSession wss, WebSocketMessage<?> webSocketMessage) throws Exception {
         try {
             lock.lock();
-            if (!sessionMapFromWSS.containsKey(wss.getId())) {
-                return;
-            }
-            Session currentSession = sessionMapFromWSS.get(wss.getId());
+            Session currentSession = getSession(wss);
             User currentUser = currentSession.getUser();
             String payload = ((TextMessage) webSocketMessage).getPayload();
             String cmd = payload.substring(0, payload.indexOf("\n"));
@@ -222,39 +202,12 @@ public class WebsocketController implements WebSocketHandler {
     }
 
     private Session getSession(WebSocketSession wss) {
-        List<String> cookies = wss.getHandshakeHeaders().get("cookie");
-        if ((cookies != null) && !cookies.isEmpty()) {
-            String foundCookie = null;
-            for (String c : cookies) {
-                if (c.toLowerCase().contains("jsessionid=")) {
-                    foundCookie = c;
-                    break;
-                }
-            }
-            if (foundCookie != null) {
-                try {
-                    Properties properties = new Properties();
-                    properties.load(new ByteArrayInputStream(foundCookie.replaceAll(";", "\n").getBytes("UTF-8")));
-                    String sid = properties.getProperty("JSESSIONID");
-                    Optional<Session> sessionOptional = sessionRepository.findById(sid);
-                    if (sessionOptional.isPresent()) {
-                        return sessionOptional.get();
-                    } else {
-                        Session session = new Session(sid, null, System.currentTimeMillis());
-                        httpInterceptor.loginWithCookies(properties, session);
-                        if (session.getUser() != null) {
-                            sessionRepository.save(session);
-                            return session;
-                        } else {
-                            wss.sendMessage(new TextMessage("redirect\n/"));
-                        }
-                    }
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-        return null;
+    	Session session = null;
+    	
+    	String requestQueryString = wss.getUri().getQuery();
+    	String jwtToken = requestQueryString.substring(requestQueryString.indexOf('=') + 1, requestQueryString.length());
+       	session = sessionRepository.findById(jwtToken).get();
+        return session;
     }
 
     private String createTextMessageUIComponent(Message msg, boolean self) throws IOException {
@@ -277,11 +230,6 @@ public class WebsocketController implements WebSocketHandler {
 
     private String createUsersListUIComponent(String username, String activeUsername) throws IOException {
         List<User> users = userRepository.findAll();
-        User broadcastUser = users.stream().filter(x -> x.getUsername().equals(Constants.broadcastUsername))
-                .collect(Collectors.toList()).get(0);
-        users.remove(broadcastUser);
-        Collections.sort(users);
-        users.add(0, broadcastUser);
         String text = "users\n";
         Map<String, String> params = new HashMap<>();
         for (int i = 0; i < users.size(); i++) {

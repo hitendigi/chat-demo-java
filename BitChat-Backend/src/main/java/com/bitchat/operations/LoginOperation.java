@@ -59,8 +59,10 @@ public class LoginOperation {
     @Autowired
     private WebsocketController websocketController;
 
-    public ResponseEntity<?> signin(@RequestBody LoginRequest loginRequest) {
+    public ResponseEntity<?> signin(HttpServletRequest request, HttpServletResponse response, LoginRequest loginRequest) {
 
+    	//logout(request, response);
+    	
 		Authentication authentication = authenticationManager.authenticate(
 				new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getName()));
 
@@ -69,11 +71,16 @@ public class LoginOperation {
 
 		UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
 
+		//HttpSession httpSession = request.getSession();
+		User dbUser = userRepository.findByUsername(loginRequest.getUsername());
+		Session session = new Session(jwt, dbUser, System.currentTimeMillis());
+        sessionRepository.save(session);
+				
 		return ResponseEntity
 				.ok(new JwtResponse(jwt, userDetails.getId(), userDetails.getUsername(), userDetails.getEmail()));
 	}
 
-	public ResponseEntity<?> signup(@RequestBody SignupRequest signUpRequest) {
+	public ResponseEntity<?> signup(SignupRequest signUpRequest) {
 		if (userRepository.existsByUsername(signUpRequest.getUsername())) {
 			return ResponseEntity.badRequest().body(new MessageResponse("Error: username is already taken!"));
 		}

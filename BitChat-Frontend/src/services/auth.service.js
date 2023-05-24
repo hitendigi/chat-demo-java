@@ -8,7 +8,7 @@ class AuthService {
       .post(API_URL + "signin", { username, name })
       .then((response) => {
         if (response.data.accessToken) {
-          console.log('jwt token : ' + response.data.accessToken);
+          //console.log('jwt token : ' + response.data.accessToken);
           localStorage.setItem("user", JSON.stringify(response.data));
         }
 

@@ -16,6 +16,8 @@ public class Session {
     private WebSocketSession webSocketSession;
 
     private String otherSideUsername;
+    
+    private String jwt;
 
     public Session(String id, User user, Long lastModified) {
         this.id = id;
@@ -73,6 +75,14 @@ public class Session {
 
 	public void setOtherSideUsername(String otherSideUsername) {
 		this.otherSideUsername = otherSideUsername;
+	}
+
+	public String getJwt() {
+		return jwt;
+	}
+
+	public void setJwt(String jwt) {
+		this.jwt = jwt;
 	}
     
     

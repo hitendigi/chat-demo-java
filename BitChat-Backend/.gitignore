@@ -1,4 +1,5 @@
 /target/
+/res/
 /uploads/
 /.settings/
 .classpath
