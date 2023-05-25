@@ -1,6 +1,7 @@
 package com.bitchat.controller;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -27,8 +28,13 @@ import com.bitchat.repository.MessageRepository;
 import com.bitchat.repository.SessionRepository;
 import com.bitchat.repository.UnreadMessageCounterRepository;
 import com.bitchat.repository.UserRepository;
+import com.bitchat.response.UserResponse;
 import com.bitchat.util.Constants;
 import com.bitchat.util.Utils;
+import com.fasterxml.jackson.databind.jsonFormatVisitors.JsonArrayFormatVisitor;
+import com.google.gson.Gson;
+
+import springfox.documentation.spring.web.json.Json;
 
 @Component
 public class WebsocketController implements WebSocketHandler {
@@ -65,9 +71,13 @@ public class WebsocketController implements WebSocketHandler {
             
             if(session != null){
             	session.setWebSocketSession(wss);
-            	session.getWebSocketSession().sendMessage(new TextMessage(
-                        createUsersListUIComponent(session.getUser().getUsername(), session.getOtherSideUsername())));
-            	
+            	List<User> users = userRepository.findAll();
+            	List<UserResponse> userResponseList = new ArrayList<>();
+            	for (User user : users) {
+					userResponseList.add(new UserResponse(user.getId(), user.getName()));
+				}
+            	Gson gson = new Gson();
+            	session.getWebSocketSession().sendMessage(new TextMessage(gson.toJson(userResponseList)));
             }
         } finally {
             lock.unlock();
@@ -228,6 +238,8 @@ public class WebsocketController implements WebSocketHandler {
         return text;
     }
 
+    
+    
     private String createUsersListUIComponent(String username, String activeUsername) throws IOException {
         List<User> users = userRepository.findAll();
         String text = "users\n";
