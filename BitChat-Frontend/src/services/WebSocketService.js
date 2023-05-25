@@ -17,7 +17,9 @@ class WebSocketService {
 
     this.socket.onmessage = (event) => {
       console.log('Received message:', event.data);
-      // Handle incoming messages
+      alert('Websocket response : ' + event.data)
+
+
     };
 
     this.socket.onclose = () => {

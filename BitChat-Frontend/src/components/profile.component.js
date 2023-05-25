@@ -15,7 +15,7 @@ class Profile extends Component {
     }
 
     return (
-      <div class="card bg-light text-dark">
+      <div className="card bg-light text-dark">
         <h1>{currentUser.username}</h1>
         <p>
           <strong>Id:</strong> {currentUser.id}
@@ -23,10 +23,10 @@ class Profile extends Component {
         <p>
           <strong>Email:</strong> {currentUser.email}
         </p>
-        <a href="#"><i class="fa fa-dribbble"></i></a>
-        <a href="#"><i class="fa fa-twitter"></i></a>
-        <a href="#"><i class="fa fa-linkedin"></i></a>
-        <a href="#"><i class="fa fa-facebook"></i></a>
+        <a href="#"><i className="fa fa-dribbble"></i></a>
+        <a href="#"><i className="fa fa-twitter"></i></a>
+        <a href="#"><i className="fa fa-linkedin"></i></a>
+        <a href="#"><i className="fa fa-facebook"></i></a>
 
         <p>
         Message : <input type="text"></input> <input type="button" value="Send"></input>
