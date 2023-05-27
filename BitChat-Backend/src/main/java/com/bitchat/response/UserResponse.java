@@ -8,9 +8,12 @@ public class UserResponse {
 
 	private String name;
 	
-	public UserResponse(UUID id, String name) {
+	private int unreadCount;
+	
+	public UserResponse(UUID id, String name, int unreadCount) {
 		this.id = id;
 		this.name = name;
+		this.unreadCount = unreadCount;
 	}
 
 	public UUID getId() {

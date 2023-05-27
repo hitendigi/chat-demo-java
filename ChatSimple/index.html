@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+  <meta charset="UTF-8">
+  <title>Chatbox</title>
+  <link href='https://fonts.googleapis.com/css?family=Nunito:400,300,700' rel='stylesheet' type='text/css'><link rel="stylesheet" href="./style.css">
+
+</head>
+<body>
+<!-- partial:index.partial.html -->
+<div class='container' ng-cloak ng-app="chatApp">
+  <h1>Chatbox UI</h1>
+  
+  <div id='loginbox' class=''>
+  	<form onsubmit="return false;">
+  		<div class="w3-section">
+        <label><b>Username</b></label>
+        <input class="w3-input w3-border w3-margin-bottom" type="text" placeholder="Enter Username" id="login_username">
+
+        <label><b>Name</b></label>
+        <input class="w3-input w3-border" type="text" placeholder="Enter Name"  id="login_name">
+        
+        <button class="w3-button w3-block w3-green w3-section w3-padding" onclick="doLogin();">Login</button>
+      </div>
+	</form>
+  </div>
+  
+  <div id='chatbox' class='chatbox' ng-controller="MessageCtrl as chatMessage" style="display: none;">
+    <div class='chatbox__user-list'>
+      <h1 id="loginuser">User list</h1>
+      <div id='userlist'>
+	      <div class='chatbox__user--active'>
+	        <p>Loading...</p>
+	      </div>
+      </div>
+    </div>
+    <div style="overflow-x: hidden;height: 425px;width: 450px;" id="messageconversation">
+    	<div class="chatbox__messages ng-scope" ng-repeat="message in messages">
+	      <div class="chatbox__messages__user-message">
+	        <div class="chatbox__messages__user-message--ind-message floatright">
+	          <p class="name ng-binding">Loading...</p>
+	          <br>
+	          <p class="message ng-binding">Loading...</p>
+	        </div>
+	      </div>
+	    </div>
+	    
+	    <div class="chatbox__messages ng-scope" ng-repeat="message in messages">
+	      <div class="chatbox__messages__user-message">
+	        <div class="chatbox__messages__user-message--ind-message floatleft">
+	          <p class="name ng-binding">Loading...</p>
+	          <br>
+	          <p class="message ng-binding">Loading...</p>
+	        </div>
+	      </div>
+	    </div>
+    </div>
+    <div>
+	    <form onsubmit="sendMessage(); return false;">
+	      <input type="text" placeholder="Enter your message" id="messageinput">
+	    </form>
+    </div>
+  </div>
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+
+<script  src="./script.js"></script>
+
+<script type="text/javascript">
+		$(document).ready(function(){
+			  //doLogin();
+			  
+			});
+	</script>	
+
+</body>
+</html>

@@ -30,7 +30,7 @@ import com.bitchat.repository.UserRepository;
 import com.bitchat.request.LoginRequest;
 import com.bitchat.request.SignupRequest;
 import com.bitchat.response.JwtResponse;
-import com.bitchat.response.MessageResponse;
+import com.bitchat.response.SignupResponse;
 import com.bitchat.services.UserDetailsImpl;
 import com.bitchat.util.Constants;
 import com.bitchat.util.Utils;
@@ -82,11 +82,11 @@ public class LoginOperation {
 
 	public ResponseEntity<?> signup(SignupRequest signUpRequest) {
 		if (userRepository.existsByUsername(signUpRequest.getUsername())) {
-			return ResponseEntity.badRequest().body(new MessageResponse("Error: username is already taken!"));
+			return ResponseEntity.badRequest().body(new SignupResponse("Error: username is already taken!"));
 		}
 
 		if (userRepository.existsByEmail(signUpRequest.getEmail())) {
-			return ResponseEntity.badRequest().body(new MessageResponse("Error: Email is already in use!"));
+			return ResponseEntity.badRequest().body(new SignupResponse("Error: Email is already in use!"));
 		}
 
 		// Create new user account
@@ -95,7 +95,7 @@ public class LoginOperation {
 
 		userRepository.save(user);
 
-		return ResponseEntity.ok(new MessageResponse("user registered successfully!"));
+		return ResponseEntity.ok(new SignupResponse("user registered successfully!"));
 	}
 	public ResponseEntity<Object> resetPassword(HttpServletRequest request, HttpServletResponse response, Map<String, String> params) {
         String currentPassword = params.get("currentPassword");

@@ -27,6 +27,14 @@ public class SessionRepository {
         }
 
     }
+    
+    public List<Session> findAll(){
+    	List<Session> sessionList = new ArrayList<Session>();
+    	for (String id : map.keySet()) {
+           sessionList.add(map.get(id));
+        }
+    	return sessionList;
+    }
 
     public void save(Session session) {
         try {

@@ -3,6 +3,7 @@ package com.bitchat.controller;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,20 +22,23 @@ import org.springframework.web.socket.WebSocketMessage;
 import org.springframework.web.socket.WebSocketSession;
 
 import com.bitchat.model.Message;
+import com.bitchat.model.Messages;
 import com.bitchat.model.Session;
 import com.bitchat.model.UnreadMessageCounter;
 import com.bitchat.model.User;
 import com.bitchat.repository.MessageRepository;
+import com.bitchat.repository.MessagesRepository;
 import com.bitchat.repository.SessionRepository;
 import com.bitchat.repository.UnreadMessageCounterRepository;
 import com.bitchat.repository.UserRepository;
+import com.bitchat.request.MessageRequest;
+import com.bitchat.response.MessageResponse;
 import com.bitchat.response.UserResponse;
+import com.bitchat.response.WebsocketResponse;
 import com.bitchat.util.Constants;
+import com.bitchat.util.TransportActionEnum;
 import com.bitchat.util.Utils;
-import com.fasterxml.jackson.databind.jsonFormatVisitors.JsonArrayFormatVisitor;
 import com.google.gson.Gson;
-
-import springfox.documentation.spring.web.json.Json;
 
 @Component
 public class WebsocketController implements WebSocketHandler {
@@ -49,7 +53,10 @@ public class WebsocketController implements WebSocketHandler {
     private SessionRepository sessionRepository;
 
     @Autowired
-    private MessageRepository messageRepository;
+    private MessageRepository messageRepository; // DEPTRICATED!
+    
+    @Autowired
+    private MessagesRepository messagesRepository;    
 
     @Autowired
     private UnreadMessageCounterRepository unreadMessageCounterRepository;
@@ -59,7 +66,6 @@ public class WebsocketController implements WebSocketHandler {
     public int loadingMessagesChunksize;
 
     private final ReentrantLock lock = new ReentrantLock(true);
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
     private final Map<String, Session> sessionMapFromWSS = new HashMap<>();
     private final Map<String, Session> sessionMapFromUN = new HashMap<>();
 
@@ -71,22 +77,76 @@ public class WebsocketController implements WebSocketHandler {
             
             if(session != null){
             	session.setWebSocketSession(wss);
-            	List<User> users = userRepository.findAll();
-            	List<UserResponse> userResponseList = new ArrayList<>();
-            	for (User user : users) {
-					userResponseList.add(new UserResponse(user.getId(), user.getName()));
-				}
+            	
+            	WebsocketResponse websocketResponse = new WebsocketResponse();
+            	websocketResponse.setReponseType(TransportActionEnum.USER_LIST);
+            	websocketResponse.setUsers(getUserList(session));
             	Gson gson = new Gson();
-            	session.getWebSocketSession().sendMessage(new TextMessage(gson.toJson(userResponseList)));
+            	///session.getWebSocketSession().sendMessage(new TextMessage(gson.toJson(userResponseList)));
+            	sendResponseToWebSocket(gson.toJson(websocketResponse), wss);
             }
         } finally {
             lock.unlock();
         }
     }
+    
+    private List<UserResponse> getUserList(Session session){
+    	List<User> users = userRepository.findAll();
+    	List<UserResponse> userResponseList = new ArrayList<>();
+    	
+    	List<Messages> messages = messagesRepository.findByReceiverUserIDAndSeen(session.getUser().getId(), 0);
+    	
+    	//UUID loggedinUserID = session.getUser().getId();
+    	for (User user : users) {
+    		// Skip logged in user
+    		int unreadCount = 0;
+    		if(!user.getEmail().equalsIgnoreCase(session.getUser().getEmail())){
+    			
+    			for (Messages messages2 : messages) {
+					if(messages2.getSenderUserID().equals(user.getId())){
+						unreadCount++;
+					}
+				}
+    			
+    			userResponseList.add(new UserResponse(user.getId(), user.getName(), unreadCount));
+    		}
+		}
+    	
+    	return userResponseList;
+    }
+    
+    public void sendResponseToWebSocket(String reponseBody, WebSocketSession wss) throws IOException{
+    	Session session = getSession(wss);
+    	session.getWebSocketSession().sendMessage(new TextMessage(reponseBody));
+    }
+    
 
     @Override
     public void handleMessage(WebSocketSession wss, WebSocketMessage<?> webSocketMessage) throws Exception {
-        try {
+    	
+    	try{
+    		lock.lock();
+            Session currentSession = getSession(wss);
+            User currentUser = currentSession.getUser();
+            
+            String payload = ((TextMessage) webSocketMessage).getPayload();
+            MessageRequest messageRequest = new Gson().fromJson(payload, MessageRequest.class);
+            
+            if(TransportActionEnum.SEND_MESSAGE.equals(messageRequest.getAction())){
+            	sendMessage(currentUser, messageRequest);
+            }else if(TransportActionEnum.DELETE_MESSAGE.equals(messageRequest.getAction())){
+            	deleteMessage(messageRequest);
+            }else if(TransportActionEnum.MESSAGE_CONVERSATION.equals(messageRequest.getAction())){
+            	fetchMessage(wss, currentUser, messageRequest);
+            }
+            	
+    	}catch(Exception e){
+    		e.printStackTrace();
+    	}finally {
+            lock.unlock();
+        }
+    	
+        /*try {
             lock.lock();
             Session currentSession = getSession(wss);
             User currentUser = currentSession.getUser();
@@ -119,8 +179,75 @@ public class WebsocketController implements WebSocketHandler {
             }
         } finally {
             lock.unlock();
-        }
+        }*/
     }
+    
+    private void sendMessage(User currentUser, MessageRequest messageRequest){
+    	Messages messages = new Messages();
+    	messages.setSenderUserID(currentUser.getId());
+    	messages.setReceiverUserID(messageRequest.getUserId());
+    	messages.setMessageBody(messageRequest.getMessage());
+    	messages.setDate(new Date().getTime());
+    	messagesRepository.save(messages);
+    	
+    	try{
+	    	// Boardcast to All WS sessions
+	    	List<Session> sessionList = sessionRepository.findAll();
+	    	for (Session session : sessionList) {
+	    		WebsocketResponse websocketResponse = new WebsocketResponse();
+	        	websocketResponse.setReponseType(TransportActionEnum.USER_LIST);
+	        	websocketResponse.setUsers(getUserList(session));
+	        	Gson gson = new Gson();
+	        	
+				sendResponseToWebSocket(gson.toJson(websocketResponse), session.getWebSocketSession());
+			}
+    	}catch(Exception e){
+    		e.printStackTrace();
+    	}
+    	
+    }
+    
+    private void fetchMessage(WebSocketSession wss, User currentUser, MessageRequest messageRequest) throws IOException{
+    	UUID senderUserID = currentUser.getId();
+    	UUID receiverUserID = messageRequest.getUserId();
+    	List<UUID> listOfUserIDs = new ArrayList<UUID>();
+    	listOfUserIDs.add(senderUserID);
+    	listOfUserIDs.add(receiverUserID);
+    	List<Messages> messages = messagesRepository.findBySenderUserIDInAndReceiverUserIDInOrderByDateAsc(listOfUserIDs, listOfUserIDs);
+    	List<MessageResponse> messageResponses = new ArrayList<>();
+    	List<User> users = userRepository.findAll();
+    	// Set name against User ID
+    	for (Messages message : messages) {
+    		MessageResponse messageResponse = MessageResponse.copyFrom(message);
+    		setUserNameAgainstUserID(users, messageResponse);
+    		messageResponses.add(messageResponse);
+		}
+    	
+    	WebsocketResponse websocketResponse = new WebsocketResponse();
+    	websocketResponse.setReponseType(TransportActionEnum.MESSAGE_CONVERSATION);
+    	websocketResponse.setMessages(messageResponses);
+    	
+    	Gson gson = new Gson();
+    	sendResponseToWebSocket(gson.toJson(websocketResponse), wss);
+    	
+    	// Change seen status
+    	messagesRepository.updateSeenStatus(receiverUserID, senderUserID);
+    }
+    
+    private void setUserNameAgainstUserID(List<User> users, MessageResponse messageResponse){
+    	for (User user : users) {
+			if(messageResponse.getSenderUserID().equals(user.getId())){
+				messageResponse.setSenderUserName(user.getName());
+			}else if(messageResponse.getReceiverUserID().equals(user.getId())){
+				messageResponse.setReceiverUserName(user.getName());
+			}
+		}
+    }
+    
+    private void deleteMessage(MessageRequest messageRequest){
+    	System.out.println("deleteMessage Implementation pending..!!");
+    }
+    
 
     private void sendMessages(String currentSideUsername, String otherSideUsername, Session currentSession, long date, String cmd) throws IOException {
         List<Message> messages;
