@@ -190,7 +190,6 @@ public class WebsocketController implements WebSocketHandler {
     	messages.setDate(new Date().getTime());
     	messagesRepository.save(messages);
     	
-    	try{
 	    	// Boardcast to All WS sessions
 	    	List<Session> sessionList = sessionRepository.findAll();
 	    	for (Session session : sessionList) {
@@ -199,12 +198,12 @@ public class WebsocketController implements WebSocketHandler {
 	        	websocketResponse.setUsers(getUserList(session));
 	        	Gson gson = new Gson();
 	        	
-				sendResponseToWebSocket(gson.toJson(websocketResponse), session.getWebSocketSession());
+	        	try{
+	        		sendResponseToWebSocket(gson.toJson(websocketResponse), session.getWebSocketSession());
+	        	}catch(Exception e){
+	        		e.printStackTrace();
+	        	}
 			}
-    	}catch(Exception e){
-    		e.printStackTrace();
-    	}
-    	
     }
     
     private void fetchMessage(WebSocketSession wss, User currentUser, MessageRequest messageRequest) throws IOException{
