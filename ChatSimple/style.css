@@ -33,6 +33,15 @@ html, body {
   box-shadow: 1px 1px 12px rgba(0, 0, 0, 0.1);
 }
 
+.active{
+	bold;text-decoration-line: underline;
+	font-style: italic;
+}
+
+.nocontent{
+	text-align: center;width: 425px;margin-top: 20px;
+}
+
 .floatright{
 	float: right;
 }

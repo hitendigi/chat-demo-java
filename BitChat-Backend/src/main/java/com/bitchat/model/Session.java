@@ -1,6 +1,8 @@
 package com.bitchat.model;
 
 
+import java.util.UUID;
+
 import org.springframework.web.socket.WebSocketSession;
 
 public class Session {
@@ -16,6 +18,8 @@ public class Session {
     private WebSocketSession webSocketSession;
 
     private String otherSideUsername;
+    
+    private UUID targetUserID;
     
     private String jwt;
 
@@ -83,6 +87,14 @@ public class Session {
 
 	public void setJwt(String jwt) {
 		this.jwt = jwt;
+	}
+
+	public UUID getTargetUserID() {
+		return targetUserID;
+	}
+
+	public void setTargetUserID(UUID targetUserID) {
+		this.targetUserID = targetUserID;
 	}
     
     

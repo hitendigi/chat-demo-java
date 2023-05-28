@@ -17,7 +17,7 @@ import com.bitchat.model.Messages;
 public interface MessagesRepository extends JpaRepository<Messages, UUID> {
 	
 	public List<Messages> findBySenderUserIDInAndReceiverUserIDInOrderByDateAsc(List<UUID> senderUserIDs, List<UUID> receiverUserIDs);	
-	public List<Messages> findByReceiverUserIDAndSeen(UUID senderUserID, int seen);	
+	public List<Messages> findByReceiverUserIDOrderByDateAsc(UUID senderUserID);	
 	
 	@Modifying
 	@Transactional

@@ -50,8 +50,15 @@
 		    }
 		    
 		    userListUI = userListUI + 
-		    		"<div class='chatbox__user--active' onclick='fetchMessageConversation(\""+user.id+"\")'>"+
-	        		"<p>"+user.name+ " " + unreadCountUI +"</p>"+
+		    		"<div style='margin-bottom: 50px;'>"+
+			    		"<div class='chatbox__user--active' onclick='fetchMessageConversation(\""+user.id+"\")'>"+
+				    		"<div>"+
+			        			"<p style='font-size: smaller;font-weight: bold;' id='useractive_"+user.id+"'>"+user.name+ " " + unreadCountUI +"</p>"+
+				    		"</div>"+
+						    "<div>"+
+				    			"<p style='margin-left: 26px;margin-top: 4px;'>"+user.lastMessage+"</p>"+
+				    		"</div>"+
+			    		"</div>"+
 		    		"</div>";
 		}
 		$('#userlist').html(userListUI);
@@ -95,8 +102,18 @@
 			    "</div>"	
 		}
 		
+		if(messageConversationUI == ''){
+			messageConversationUI = '<div class="nocontent"><p>No messages found!</p></div>'
+		}
 		
 		$('#messageconversation').html(messageConversationUI)
+		
+		// change active element
+		$('#userlist').find('div > div > div > p').removeClass('active');
+		$('#useractive_' + conversationUserID).addClass('active');
+		
+		// Scroll to bottom
+		$('#messageconversation').scrollTop($('#messageconversation')[0].scrollHeight);
 	}
 	
 	function sendMessage(){

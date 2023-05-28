@@ -3,6 +3,7 @@ package com.bitchat.controller;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -94,29 +95,53 @@ public class WebsocketController implements WebSocketHandler {
     	List<User> users = userRepository.findAll();
     	List<UserResponse> userResponseList = new ArrayList<>();
     	
-    	List<Messages> messages = messagesRepository.findByReceiverUserIDAndSeen(session.getUser().getId(), 0);
-    	
-    	//UUID loggedinUserID = session.getUser().getId();
     	for (User user : users) {
-    		// Skip logged in user
     		int unreadCount = 0;
+    		
+    		UUID senderUserID = session.getUser().getId();
+        	UUID receiverUserID = user.getId();
+        	List<UUID> listOfUserIDs = new ArrayList<UUID>();
+        	listOfUserIDs.add(senderUserID);
+        	listOfUserIDs.add(receiverUserID);
+        	List<Messages> messages = messagesRepository.findBySenderUserIDInAndReceiverUserIDInOrderByDateAsc(listOfUserIDs, listOfUserIDs);
+    		
     		if(!user.getEmail().equalsIgnoreCase(session.getUser().getEmail())){
-    			
-    			for (Messages messages2 : messages) {
-					if(messages2.getSenderUserID().equals(user.getId())){
+    			String lastMessageSnipate = "";
+    			Long lastMessageDate = new Long(0);
+    			//for (Messages messages2 : messages) {
+    			for (int i = 0; i < messages.size(); i++) {
+    				// Unseen Counts
+    				Messages messages2 = messages.get(i);
+					if(messages2.getSenderUserID().equals(user.getId()) && messages2.getSeen() == 0){
 						unreadCount++;
 					}
+					// Last message
+					if(i== messages.size() - 1){
+						lastMessageSnipate = messages2.getMessageBody();
+						if(lastMessageSnipate.length()> 10){
+							lastMessageSnipate = lastMessageSnipate.substring(0, 9);
+						}
+						lastMessageDate = messages2.getDate();
+					}
 				}
-    			
-    			userResponseList.add(new UserResponse(user.getId(), user.getName(), unreadCount));
+    			userResponseList.add(new UserResponse(user.getId(), user.getName(), unreadCount, lastMessageSnipate, lastMessageDate));
     		}
 		}
+    	
+    	// sort user list based on last messages
+    	Collections.sort(userResponseList, new Comparator<UserResponse>(){
+    		   public int compare(UserResponse o1, UserResponse o2){
+    		      return o2.compareTo(o1.getDate());
+    		   }
+    		});
     	
     	return userResponseList;
     }
     
     public void sendResponseToWebSocket(String reponseBody, WebSocketSession wss) throws IOException{
     	Session session = getSession(wss);
+    	System.out.println("sending response to : " + session.getUser().getName());
+    	System.out.println("message : " + reponseBody );
     	session.getWebSocketSession().sendMessage(new TextMessage(reponseBody));
     }
     
@@ -190,20 +215,37 @@ public class WebsocketController implements WebSocketHandler {
     	messages.setDate(new Date().getTime());
     	messagesRepository.save(messages);
     	
-	    	// Boardcast to All WS sessions
-	    	List<Session> sessionList = sessionRepository.findAll();
-	    	for (Session session : sessionList) {
-	    		WebsocketResponse websocketResponse = new WebsocketResponse();
-	        	websocketResponse.setReponseType(TransportActionEnum.USER_LIST);
-	        	websocketResponse.setUsers(getUserList(session));
-	        	Gson gson = new Gson();
-	        	
-	        	try{
-	        		sendResponseToWebSocket(gson.toJson(websocketResponse), session.getWebSocketSession());
-	        	}catch(Exception e){
-	        		e.printStackTrace();
-	        	}
-			}
+    	// Boardcast to All WS sessions
+    	List<Session> sessionList = sessionRepository.findAll();
+	    for (Session session : sessionList) {
+	       	
+	    	// Refresh User List area
+		    try{
+		    	//if(!session.getUser().getId().equals(currentUser.getId()) && 
+		    	//		!currentUser.getId().equals(session.getTargetUserID())){
+		    		
+		    		WebsocketResponse websocketResponse = new WebsocketResponse();
+			       	websocketResponse.setReponseType(TransportActionEnum.USER_LIST);
+			       	websocketResponse.setUsers(getUserList(session));
+			       	Gson gson = new Gson();
+		    		sendResponseToWebSocket(gson.toJson(websocketResponse), session.getWebSocketSession());
+		    	//}
+	       	}catch(Exception e){
+	       		e.printStackTrace();
+	       	}
+	       	
+		    // Refresh Message conversation area
+		    try{
+		    	if(session.getTargetUserID().equals(currentUser.getId())){
+			    	MessageRequest messageRequestForMessageConversation = new MessageRequest();
+			    	messageRequestForMessageConversation.setUserId(session.getUser().getId());
+			    	fetchMessage(session.getWebSocketSession(), currentUser, messageRequestForMessageConversation);
+		    	}
+		    }catch(Exception e){
+	       		e.printStackTrace();
+	       	}
+		    
+		}
     }
     
     private void fetchMessage(WebSocketSession wss, User currentUser, MessageRequest messageRequest) throws IOException{
@@ -228,6 +270,10 @@ public class WebsocketController implements WebSocketHandler {
     	
     	Gson gson = new Gson();
     	sendResponseToWebSocket(gson.toJson(websocketResponse), wss);
+    	
+    	// Change Target user id in session 
+    	Session session = getSession(wss);
+    	session.setTargetUserID(receiverUserID);
     	
     	// Change seen status
     	messagesRepository.updateSeenStatus(receiverUserID, senderUserID);
