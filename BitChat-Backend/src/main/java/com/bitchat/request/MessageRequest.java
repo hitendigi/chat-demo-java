@@ -14,8 +14,6 @@ public class MessageRequest {
 
     private UUID messageId;
 
-	
-
 	public UUID getUserId() {
 		return userId;
 	}

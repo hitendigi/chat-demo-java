@@ -5,9 +5,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -24,32 +22,25 @@ import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.WebSocketMessage;
 import org.springframework.web.socket.WebSocketSession;
 
-import com.bitchat.model.Message;
 import com.bitchat.model.Messages;
 import com.bitchat.model.Session;
-import com.bitchat.model.UnreadMessageCounter;
 import com.bitchat.model.User;
-import com.bitchat.repository.MessageRepository;
 import com.bitchat.repository.MessagesRepository;
 import com.bitchat.repository.SessionRepository;
-import com.bitchat.repository.UnreadMessageCounterRepository;
 import com.bitchat.repository.UserRepository;
 import com.bitchat.request.MessageRequest;
 import com.bitchat.response.MessageResponse;
 import com.bitchat.response.UserResponse;
 import com.bitchat.response.WebsocketResponse;
 import com.bitchat.services.BlackListingService;
-import com.bitchat.util.Constants;
 import com.bitchat.util.TransportActionEnum;
-import com.bitchat.util.Utils;
 import com.google.gson.Gson;
 
 @Component
 public class WebsocketController implements WebSocketHandler {
 
-    @Autowired
-    private Utils utils;
-
+	private static final Logger logger = LoggerFactory.getLogger(WebsocketController.class);
+	
     @Autowired
     private UserRepository userRepository;
 
@@ -57,14 +48,8 @@ public class WebsocketController implements WebSocketHandler {
     private SessionRepository sessionRepository;
 
     @Autowired
-    private MessageRepository messageRepository; // DEPTRICATED!
-    
-    @Autowired
     private MessagesRepository messagesRepository;    
 
-    @Autowired
-    private UnreadMessageCounterRepository unreadMessageCounterRepository;
-    
     @Autowired
     private BlackListingService blackListingService;
 
@@ -73,9 +58,10 @@ public class WebsocketController implements WebSocketHandler {
     public int loadingMessagesChunksize;
 
     private final ReentrantLock lock = new ReentrantLock(true);
-    private final Map<String, Session> sessionMapFromWSS = new HashMap<>();
-    private final Map<String, Session> sessionMapFromUN = new HashMap<>();
 
+    /**
+     * After connection close, return list of users
+     */
     @Override
     public void afterConnectionEstablished(WebSocketSession wss) throws IOException {
         try {
@@ -83,13 +69,13 @@ public class WebsocketController implements WebSocketHandler {
             Session session = getSession(wss);
             
             if(session != null){
-            	session.setWebSocketSession(wss);
+            	logger.info("Found session for user : " + session.getUser().getUsername() +". Websocket connection established!");
             	
+            	session.setWebSocketSession(wss);
             	WebsocketResponse websocketResponse = new WebsocketResponse();
             	websocketResponse.setReponseType(TransportActionEnum.USER_LIST);
             	websocketResponse.setUsers(getUserList(session));
             	Gson gson = new Gson();
-            	///session.getWebSocketSession().sendMessage(new TextMessage(gson.toJson(userResponseList)));
             	sendResponseToWebSocket(gson.toJson(websocketResponse), wss);
             }
         } finally {
@@ -97,6 +83,11 @@ public class WebsocketController implements WebSocketHandler {
         }
     }
     
+    /**
+     * Prepare user list response
+     * @param session
+     * @return
+     */
     private List<UserResponse> getUserList(Session session){
     	List<User> users = userRepository.findAll();
     	List<UserResponse> userResponseList = new ArrayList<>();
@@ -114,13 +105,14 @@ public class WebsocketController implements WebSocketHandler {
     		if(!user.getEmail().equalsIgnoreCase(session.getUser().getEmail())){
     			String lastMessageSnipate = "";
     			Long lastMessageDate = new Long(0);
-    			//for (Messages messages2 : messages) {
     			for (int i = 0; i < messages.size(); i++) {
+    				
     				// Unseen Counts
     				Messages messages2 = messages.get(i);
 					if(messages2.getSenderUserID().equals(user.getId()) && messages2.getSeen() == 0){
 						unreadCount++;
 					}
+					
 					// Last message
 					if(i== messages.size() - 1){
 						lastMessageSnipate = messages2.getMessageBody();
@@ -144,21 +136,29 @@ public class WebsocketController implements WebSocketHandler {
     	return userResponseList;
     }
     
-    public void sendResponseToWebSocket(String reponseBody, WebSocketSession wss) throws IOException{
+    /**
+     * Common method for submit response to websocket 
+     * @param reponseBody
+     * @param wss
+     * @throws IOException
+     */
+    private void sendResponseToWebSocket(String reponseBody, WebSocketSession wss) throws IOException{
     	Session session = getSession(wss);
-    	System.out.println("sending response to : " + session.getUser().getName());
-    	System.out.println("message : " + reponseBody );
+    	logger.info("Sending response to user : " + session.getUser().getUsername());
     	session.getWebSocketSession().sendMessage(new TextMessage(reponseBody));
     }
     
-
+    
+    /**
+     * Handle message implementation to receive websocket request
+     */
     @Override
     public void handleMessage(WebSocketSession wss, WebSocketMessage<?> webSocketMessage) throws Exception {
-    	
     	try{
     		lock.lock();
             Session currentSession = getSession(wss);
             User currentUser = currentSession.getUser();
+            logger.info("Received websocket request from user : " + currentUser.getUsername() + ". Request : " + webSocketMessage);
             
             String payload = ((TextMessage) webSocketMessage).getPayload();
             MessageRequest messageRequest = new Gson().fromJson(payload, MessageRequest.class);
@@ -176,43 +176,13 @@ public class WebsocketController implements WebSocketHandler {
     	}finally {
             lock.unlock();
         }
-    	
-        /*try {
-            lock.lock();
-            Session currentSession = getSession(wss);
-            User currentUser = currentSession.getUser();
-            String payload = ((TextMessage) webSocketMessage).getPayload();
-            String cmd = payload.substring(0, payload.indexOf("\n"));
-            String body = payload.substring(payload.indexOf("\n") + 1, payload.length());
-            if ("msg".equals(cmd)) {
-                Message msg = new Message();
-                msg.setTextMessage(true);
-                msg.setBody(body);
-                msg.setDate(System.currentTimeMillis());
-                msg.setSenderPresentation(currentUser.getPresentation());
-                msg.setSenderUsername(currentUser.getUsername());
-                msg.setReceiverUsername(currentSession.getOtherSideUsername());
-
-                routeMessage(currentUser.getUsername(), msg);
-            } else if ("change-page".equals(cmd)) {
-                currentSession.setOtherSideUsername(body);
-                changePage(currentSession);
-            } else if ("delete-msg".equals(cmd)) {
-                Message msg = messageRepository.findById(UUID.fromString(body)).get();
-                deleteMessage(msg, currentSession);
-            } else if ("top".equals(cmd)) {
-                String otherSideUsername = currentSession.getOtherSideUsername();
-                sendMessages(currentUser.getUsername(), otherSideUsername, currentSession, Long.parseLong(body), "load");
-            } else if ("ping".equals(cmd)) {
-                currentSession.getWebSocketSession().sendMessage(new TextMessage("pong\n"));
-            } else {
-                logger.error("Unsupported command!");
-            }
-        } finally {
-            lock.unlock();
-        }*/
     }
     
+    /**
+     * 'Send message' functionality implementation
+     * @param currentUser
+     * @param messageRequest
+     */
     private void sendMessage(User currentUser, MessageRequest messageRequest){
     	Messages messages = new Messages();
     	messages.setSenderUserID(currentUser.getId());
@@ -227,15 +197,11 @@ public class WebsocketController implements WebSocketHandler {
 	       	
 	    	// Refresh User List area
 		    try{
-		    	//if(!session.getUser().getId().equals(currentUser.getId()) && 
-		    	//		!currentUser.getId().equals(session.getTargetUserID())){
-		    		
-		    		WebsocketResponse websocketResponse = new WebsocketResponse();
-			       	websocketResponse.setReponseType(TransportActionEnum.USER_LIST);
-			       	websocketResponse.setUsers(getUserList(session));
-			       	Gson gson = new Gson();
-		    		sendResponseToWebSocket(gson.toJson(websocketResponse), session.getWebSocketSession());
-		    	//}
+	    		WebsocketResponse websocketResponse = new WebsocketResponse();
+		       	websocketResponse.setReponseType(TransportActionEnum.USER_LIST);
+		       	websocketResponse.setUsers(getUserList(session));
+		       	Gson gson = new Gson();
+	    		sendResponseToWebSocket(gson.toJson(websocketResponse), session.getWebSocketSession());
 	       	}catch(Exception e){
 	       		e.printStackTrace();
 	       	}
@@ -254,6 +220,13 @@ public class WebsocketController implements WebSocketHandler {
 		}
     }
     
+    /**
+     * 'Fetch message conversation' functionality implementation 
+     * @param wss
+     * @param currentUser
+     * @param messageRequest
+     * @throws IOException
+     */
     private void fetchMessage(WebSocketSession wss, User currentUser, MessageRequest messageRequest) throws IOException{
     	UUID senderUserID = currentUser.getId();
     	UUID receiverUserID = messageRequest.getUserId();
@@ -285,6 +258,11 @@ public class WebsocketController implements WebSocketHandler {
     	messagesRepository.updateSeenStatus(receiverUserID, senderUserID);
     }
     
+    /**
+     * Set username against user id
+     * @param users
+     * @param messageResponse
+     */
     private void setUserNameAgainstUserID(List<User> users, MessageResponse messageResponse){
     	for (User user : users) {
 			if(messageResponse.getSenderUserID().equals(user.getId())){
@@ -295,30 +273,18 @@ public class WebsocketController implements WebSocketHandler {
 		}
     }
     
+    /**
+     * 'Delete message' functionality implementation
+     * @param messageRequest
+     */
     private void deleteMessage(MessageRequest messageRequest){
-    	System.out.println("deleteMessage Implementation pending..!!");
+    	
     }
     
 
-    private void sendMessages(String currentSideUsername, String otherSideUsername, Session currentSession, long date, String cmd) throws IOException {
-        List<Message> messages;
-        if (Constants.broadcastUsername.equals(otherSideUsername)) {
-            messages = messageRepository.fetchMessages(loadingMessagesChunksize, otherSideUsername, date);
-        } else {
-            messages = messageRepository.fetchMessages(loadingMessagesChunksize, currentSideUsername, otherSideUsername, date);
-        }
-        Collections.reverse(messages);
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < messages.size(); i++) {
-            Message m = messages.get(i);
-            sb.append(createTextMessageUIComponent(m, currentSideUsername.equals(m.getSenderUsername())));
-        }
-        currentSession.getWebSocketSession().sendMessage(new TextMessage(cmd + "\n" + sb.toString()));
-        if (messages.size() > 0) {
-            currentSession.getWebSocketSession().sendMessage(new TextMessage("checkForLoadingMore\n"));
-        }
-    }
-
+    /**
+     * Remove websocket session after disconnect
+     */
     @Override
     public void afterConnectionClosed(WebSocketSession wss, CloseStatus closeStatus) throws Exception {
         try {
@@ -329,65 +295,42 @@ public class WebsocketController implements WebSocketHandler {
         }
     }
 
+    /**
+     * 'Logout' functionality implementation 
+     * @param request
+     */
     public void logout(HttpServletRequest request) {
         try {
             lock.lock();
+
             // get accesstoken
         	String jwtToken = request.getParameter("token");
            	Session session = sessionRepository.findById(jwtToken).get();
            	
            	// Remove Websocket session
             removeWebSocketSession(session.getWebSocketSession());
+            
+            logger.info("Successfully logout for user : " + session.getUser().getUsername());
         } finally {
             lock.unlock();
         }
     }
 
+    /**
+     * Remove websocket session
+     * @param wss
+     */
     private void removeWebSocketSession(WebSocketSession wss) {
     	Session session = getSession(wss);
     	blackListingService.blackListJwt(session.getId());
         sessionRepository.deleteById(wss.getId());
     }
 
-    @Override
-    public void handleTransportError(WebSocketSession webSocketSession, Throwable throwable) throws Exception {
-    }
-
-    @Override
-    public boolean supportsPartialMessages() {
-        return false;
-    }
-
-    public void updateAllUserLists(String excludeUsername) {
-        try {
-            lock.lock();
-            if (excludeUsername != null) {
-                List<Message> messages = messageRepository.findAllBySenderUsername(excludeUsername);
-                messages.addAll(messageRepository.findAllByReceiverUsername(excludeUsername));
-                messages.forEach(x -> messageRepository.delete(x));
-                List<UnreadMessageCounter> unreadMessageCounters = unreadMessageCounterRepository.findAllByCurrentSideUsername(excludeUsername);
-                unreadMessageCounters.addAll(unreadMessageCounterRepository.findAllByOtherSideUsername(excludeUsername));
-                unreadMessageCounterRepository.deleteAll(unreadMessageCounters);
-            }
-            sessionMapFromWSS.values().forEach(x -> {
-                try {
-                    if (x.getUser() != null) {
-                        if (excludeUsername != null && x.getOtherSideUsername().equals(excludeUsername)) {
-                            x.setOtherSideUsername(Constants.broadcastUsername);
-                            changePage(x);
-                        }
-                        x.getWebSocketSession().sendMessage(new TextMessage(
-                                createUsersListUIComponent(x.getUser().getUsername(), x.getOtherSideUsername())));
-                    }
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            });
-        } finally {
-            lock.unlock();
-        }
-    }
-
+    /**
+     * Get custom session object from websocket object
+     * @param wss
+     * @return
+     */
     private Session getSession(WebSocketSession wss) {
     	Session session = null;
     	
@@ -397,115 +340,15 @@ public class WebsocketController implements WebSocketHandler {
         return session;
     }
 
-    private String createTextMessageUIComponent(Message msg, boolean self) throws IOException {
-        String text = "";
-        Map<String, String> params = new HashMap<>();
-        params.put("id", "" + msg.getId());
-        params.put("date", "date=\"" + msg.getDate() + "\"");
-        params.put("image", "");
-        params.put("onclick", "");
-        params.put("body", msg.getBody());
-        params.put("dateStr", utils.formatTime(msg.getDate()));
-        if (self) {
-            text += utils.readPage("/chat-msg-right.html", params);
-        } else {
-            params.put("title", msg.getSenderPresentation());
-            text += utils.readPage("/chat-msg-left.html", params);
-        }
-        return text;
-    }
+	@Override
+	public void handleTransportError(WebSocketSession session, Throwable exception) throws Exception {
+		// TODO Auto-generated method stub
+	}
 
-    
-    
-    private String createUsersListUIComponent(String username, String activeUsername) throws IOException {
-        List<User> users = userRepository.findAll();
-        String text = "users\n";
-        Map<String, String> params = new HashMap<>();
-        for (int i = 0; i < users.size(); i++) {
-            User user = users.get(i);
-            params.clear();
-            if (user.getUsername().equals(activeUsername)) {
-                params.put("name", user.getPresentation());
-                text += utils.readPage("/sidebar-entry-active.html", params);
-            } else {
-                params.put("name", user.getPresentation());
-                params.put("onclick", " onclick=\'changePage(\"" + user.getUsername() + "\")\' ");
-                UnreadMessageCounter unreadMessageCounter = unreadMessageCounterRepository.findByCurrentSideUsernameAndOtherSideUsername(username, user.getUsername());
-                Integer count = (unreadMessageCounter == null) ? 0 : unreadMessageCounter.getCount();
-                params.put("count", (count == 0) ? ""
-                        : "<div class=\"SidebarEntryUnreadCount SimpleText SimpleFont\">" + count + "</div>");
-                text += utils.readPage("/sidebar-entry-passive.html", params);
-            }
-        }
-        return text;
-    }
+	@Override
+	public boolean supportsPartialMessages() {
+		// TODO Auto-generated method stub
+		return false;
+	}
 
-    private void changePage(Session session) throws IOException {
-        String otherSideUsername = session.getOtherSideUsername();
-        session.getWebSocketSession().sendMessage(new TextMessage(
-                createUsersListUIComponent(session.getUser().getUsername(), otherSideUsername)));
-        sendMessages(session.getUser().getUsername(), otherSideUsername, session, System.currentTimeMillis(), "page");
-        UnreadMessageCounter unreadMessageCounter = unreadMessageCounterRepository.findByCurrentSideUsernameAndOtherSideUsername(session.getUser().getUsername(), otherSideUsername);
-        if (unreadMessageCounter != null) {
-            unreadMessageCounterRepository.delete(unreadMessageCounter);
-        }
-    }
-
-    private void routeMessage(String senderUsername, Message msg) throws IOException {
-        Session currentSession = sessionMapFromUN.get(senderUsername);
-        String otherSideUsername = currentSession.getOtherSideUsername();
-        msg.setSenderUsername(senderUsername);
-        msg.setReceiverUsername(otherSideUsername);
-        messageRepository.save(msg);
-        String selfPack = "msg\n" + createTextMessageUIComponent(msg, true);
-        String otherPack = "msg\n" + createTextMessageUIComponent(msg, false);
-        routePacket(selfPack, otherPack, currentSession);
-    }
-
-    private void routePacket(String selfPack, String otherPack, Session currentSession) throws IOException {
-        String senderUsername = currentSession.getUser().getUsername();
-        String otherSideUsername = currentSession.getOtherSideUsername();
-        currentSession.getWebSocketSession().sendMessage(new TextMessage(selfPack));
-        if (otherSideUsername.equals(Constants.broadcastUsername)) {
-            for (User user : userRepository.findAll()) {
-                String username = user.getUsername();
-                if (username.equals(senderUsername) || username.equals(Constants.broadcastUsername)) {
-                    continue;
-                }
-                Session userSession = sessionMapFromUN.get(username);
-                sendOtherSideMessage(otherPack, otherSideUsername, username, userSession);
-            }
-        } else {
-            if (!otherSideUsername.equals(senderUsername)) {
-                Session otherSideSession = sessionMapFromUN.get(otherSideUsername);
-                sendOtherSideMessage(otherPack, senderUsername, otherSideUsername, otherSideSession);
-            }
-        }
-    }
-
-    private void sendOtherSideMessage(String msg, String otherSideUsername, String senderUsername, Session session) throws IOException {
-        if ((session != null) && session.getOtherSideUsername().equals(otherSideUsername)) {
-            session.getWebSocketSession().sendMessage(new TextMessage(msg));
-        } else {
-            UnreadMessageCounter unreadMessageCounter = unreadMessageCounterRepository.findByCurrentSideUsernameAndOtherSideUsername(senderUsername, otherSideUsername);
-            int cnt = (unreadMessageCounter == null) ? 1 : (unreadMessageCounter.getCount() + 1);
-            if (unreadMessageCounter == null) {
-                unreadMessageCounter = new UnreadMessageCounter();
-                unreadMessageCounter.setCurrentSideUsername(senderUsername);
-                unreadMessageCounter.setOtherSideUsername(otherSideUsername);
-            }
-            unreadMessageCounter.setCount(cnt);
-            unreadMessageCounterRepository.save(unreadMessageCounter);
-            if (session != null) {
-                session.getWebSocketSession().sendMessage(new TextMessage(
-                        createUsersListUIComponent(session.getUser().getUsername(), session.getOtherSideUsername())));
-            }
-        }
-    }
-
-    public void deleteMessage(Message msg, Session currentSession) throws IOException {
-        String pack = "delete-msg\n" + msg.getId();
-        messageRepository.delete(msg);
-        routePacket(pack, pack, currentSession);
-    }
 }

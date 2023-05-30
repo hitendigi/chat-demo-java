@@ -1,12 +1,9 @@
 package com.bitchat.operations;
 
-import java.io.IOException;
 import java.util.Map;
 
-import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -17,9 +14,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 
 import com.bitchat.controller.WebsocketController;
 import com.bitchat.jwt.JwtUtils;
@@ -30,10 +24,7 @@ import com.bitchat.repository.UserRepository;
 import com.bitchat.request.LoginRequest;
 import com.bitchat.request.SignupRequest;
 import com.bitchat.response.JwtResponse;
-import com.bitchat.response.SignupResponse;
 import com.bitchat.services.UserDetailsImpl;
-import com.bitchat.util.Constants;
-import com.bitchat.util.Utils;
 
 @Component 
 public class LoginOperation {
@@ -48,9 +39,6 @@ public class LoginOperation {
     private UserRepository userRepository;
     
     @Autowired
-    private Utils utils;
-    
-    @Autowired
 	PasswordEncoder encoder;
 
 	@Autowired
@@ -59,10 +47,15 @@ public class LoginOperation {
     @Autowired
     private WebsocketController websocketController;
 
+    /**
+     * Login through jwt token
+     * @param request
+     * @param response
+     * @param loginRequest
+     * @return
+     */
     public ResponseEntity<?> signin(HttpServletRequest request, HttpServletResponse response, LoginRequest loginRequest) {
 
-    	//logout(request, response);
-    	
 		Authentication authentication = authenticationManager.authenticate(
 				new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getName()));
 
@@ -71,7 +64,6 @@ public class LoginOperation {
 
 		UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
 
-		//HttpSession httpSession = request.getSession();
 		User dbUser = userRepository.findByUsername(loginRequest.getUsername());
 		Session session = new Session(jwt, dbUser, System.currentTimeMillis());
         sessionRepository.save(session);
@@ -80,13 +72,18 @@ public class LoginOperation {
 				.ok(new JwtResponse(jwt, userDetails.getId(), userDetails.getUsername(), userDetails.getEmail()));
 	}
 
+    /**
+     * Username and email should be unique while signup
+     * @param signUpRequest
+     * @return
+     */
 	public ResponseEntity<?> signup(SignupRequest signUpRequest) {
 		if (userRepository.existsByUsername(signUpRequest.getUsername())) {
-			return ResponseEntity.badRequest().body(new SignupResponse("Error: username is already taken!"));
+			return ResponseEntity.badRequest().body("Error: username is already taken!");
 		}
 
 		if (userRepository.existsByEmail(signUpRequest.getEmail())) {
-			return ResponseEntity.badRequest().body(new SignupResponse("Error: Email is already in use!"));
+			return ResponseEntity.badRequest().body("Error: Email is already in use!");
 		}
 
 		// Create new user account
@@ -95,24 +92,42 @@ public class LoginOperation {
 
 		userRepository.save(user);
 
-		return ResponseEntity.ok(new SignupResponse("user registered successfully!"));
+		return ResponseEntity.ok("user registered successfully!");
 	}
 	
+	/**
+	 * Reset password
+	 * @param request
+	 * @param response
+	 * @param params
+	 * @return
+	 */
 	public ResponseEntity<Object> resetPassword(HttpServletRequest request, HttpServletResponse response, Map<String, String> params) {
          return new ResponseEntity<Object>("Implementation pending!", HttpStatus.OK);
     }
 		
+	/**
+	 * Logout
+	 * @param request
+	 * @param response
+	 * @return
+	 */
 	public ResponseEntity<Object> logout(HttpServletRequest request, HttpServletResponse response) {
         try {
         	websocketController.logout(request);
             return new ResponseEntity<Object>("Logout Successfully!", HttpStatus.OK);
         } catch (Exception e) {
             e.printStackTrace();
-            String exStr = utils.serializeException(e);
-            return new ResponseEntity<Object>(exStr, HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<Object>(HttpStatus.BAD_REQUEST);
         }
     }
 
+	/**
+	 * Delete user account
+	 * @param request
+	 * @param response
+	 * @return
+	 */
     public ResponseEntity<Object> deleteAccount(HttpServletRequest request, HttpServletResponse response) {
     	return new ResponseEntity<Object>("Implementation pending!", HttpStatus.OK);
     }

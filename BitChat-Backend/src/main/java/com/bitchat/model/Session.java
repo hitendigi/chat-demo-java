@@ -1,37 +1,30 @@
 package com.bitchat.model;
 
-
 import java.util.UUID;
 
 import org.springframework.web.socket.WebSocketSession;
 
 public class Session {
 
-    private String id; // JWT Token
+	private String id; // JWT token
 
-    private User user;
+	private User user;
 
-    private Long lastModified;
+	private Long lastModified;
 
-    private String redirectedUri;
+	private WebSocketSession webSocketSession;
 
-    private WebSocketSession webSocketSession;
+	private UUID targetUserID;
 
-    private String otherSideUsername;
-    
-    private UUID targetUserID;
-    
-    private String jwt;
+	public Session(String id, User user, Long lastModified) {
+		this.id = id;
+		this.user = user;
+		this.lastModified = lastModified;
+	}
 
-    public Session(String id, User user, Long lastModified) {
-        this.id = id;
-        this.user = user;
-        this.lastModified = lastModified;
-    }
-
-    public void logout() {
-        setUser(null);
-    }
+	public void logout() {
+		setUser(null);
+	}
 
 	public String getId() {
 		return id;
@@ -57,36 +50,12 @@ public class Session {
 		this.lastModified = lastModified;
 	}
 
-	public String getRedirectedUri() {
-		return redirectedUri;
-	}
-
-	public void setRedirectedUri(String redirectedUri) {
-		this.redirectedUri = redirectedUri;
-	}
-
 	public WebSocketSession getWebSocketSession() {
 		return webSocketSession;
 	}
 
 	public void setWebSocketSession(WebSocketSession webSocketSession) {
 		this.webSocketSession = webSocketSession;
-	}
-
-	public String getOtherSideUsername() {
-		return otherSideUsername;
-	}
-
-	public void setOtherSideUsername(String otherSideUsername) {
-		this.otherSideUsername = otherSideUsername;
-	}
-
-	public String getJwt() {
-		return jwt;
-	}
-
-	public void setJwt(String jwt) {
-		this.jwt = jwt;
 	}
 
 	public UUID getTargetUserID() {
@@ -96,6 +65,5 @@ public class Session {
 	public void setTargetUserID(UUID targetUserID) {
 		this.targetUserID = targetUserID;
 	}
-    
-    
+
 }
