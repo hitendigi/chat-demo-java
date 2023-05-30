@@ -17,6 +17,7 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import com.bitchat.services.BlackListingService;
 import com.bitchat.services.UserDetailsServiceImpl;
 
 public class AuthTokenFilter extends OncePerRequestFilter {
@@ -25,6 +26,9 @@ public class AuthTokenFilter extends OncePerRequestFilter {
 
 	@Autowired
 	private UserDetailsServiceImpl userDetailsService;
+	
+	@Autowired
+    private BlackListingService blackListingService;
 
 	private static final Logger logger = LoggerFactory.getLogger(AuthTokenFilter.class);
 
@@ -33,16 +37,23 @@ public class AuthTokenFilter extends OncePerRequestFilter {
 			throws ServletException, IOException {
 		try {
 			String jwt = parseJwt(request);
-			if (jwt != null && jwtUtils.validateJwtToken(jwt)) {
-				String username = jwtUtils.getUserNameFromJwtToken(jwt);
-
-				UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-				UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-						userDetails, null, userDetails.getAuthorities());
-				authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
-				SecurityContextHolder.getContext().setAuthentication(authentication);
-			}
+			String blackListedToken = blackListingService.getJwtBlackList(jwt);
+            if (blackListedToken != null) {
+            	logger.error("JwtInterceptor: Token is blacklisted");
+            	response.sendError(401);
+            	return;
+            }else{
+				if (jwt != null && jwtUtils.validateJwtToken(jwt)) {
+					String username = jwtUtils.getUserNameFromJwtToken(jwt);
+	
+					UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+					UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+							userDetails, null, userDetails.getAuthorities());
+					authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+	
+					SecurityContextHolder.getContext().setAuthentication(authentication);
+				}
+            }
 		} catch (Exception e) {
 			logger.error("Cannot set user authentication: {}", e);
 		}

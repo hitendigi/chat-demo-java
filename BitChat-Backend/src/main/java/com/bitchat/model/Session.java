@@ -7,7 +7,7 @@ import org.springframework.web.socket.WebSocketSession;
 
 public class Session {
 
-    private String id;
+    private String id; // JWT Token
 
     private User user;
 

@@ -97,47 +97,14 @@ public class LoginOperation {
 
 		return ResponseEntity.ok(new SignupResponse("user registered successfully!"));
 	}
+	
 	public ResponseEntity<Object> resetPassword(HttpServletRequest request, HttpServletResponse response, Map<String, String> params) {
-        String currentPassword = params.get("currentPassword");
-        String newPassword = params.get("newPassword");
-        Boolean updateCookies = Boolean.parseBoolean(params.get("updateCookies"));
-        HttpSession httpSession = request.getSession();
-        User user = getUser(httpSession);
-        if (user.getPassword().equals(utils.hash(currentPassword))) {
-            String problem = User.validatePassword(newPassword);
-            if (problem == null) {
-                user.setPassword(utils.hash(newPassword));
-                userRepository.save(user);
-                if (updateCookies) {
-                    Cookie usernameCookie = new Cookie("username", user.getUsername());
-                    usernameCookie.setMaxAge(60 * 60 * 24 * 30 * 12);
-                    response.addCookie(usernameCookie);
-                    Cookie passwordCookie = new Cookie("password", user.getPassword());
-                    passwordCookie.setMaxAge(60 * 60 * 24 * 30 * 12);
-                    response.addCookie(passwordCookie);
-                }
-                return new ResponseEntity<Object>("Success!", HttpStatus.OK);
-            } else {
-                return new ResponseEntity<Object>(problem, HttpStatus.BAD_REQUEST);
-            }
-        } else {
-            return new ResponseEntity<Object>("Incorrect current password", HttpStatus.BAD_REQUEST);
-        }
+         return new ResponseEntity<Object>("Implementation pending!", HttpStatus.OK);
     }
 		
 	public ResponseEntity<Object> logout(HttpServletRequest request, HttpServletResponse response) {
-        HttpSession httpSession = request.getSession();
-        User user = getUser(httpSession);
         try {
-            Cookie usernameCookie = new Cookie("username", "");
-            usernameCookie.setMaxAge(0);
-            response.addCookie(usernameCookie);
-            Cookie passwordCookie = new Cookie("password", "");
-            passwordCookie.setMaxAge(0);
-            response.addCookie(passwordCookie);
-            Session session = sessionRepository.findById(httpSession.getId()).get();
-            websocketController.logout(user);
-            session.logout();
+        	websocketController.logout(request);
             return new ResponseEntity<Object>("Logout Successfully!", HttpStatus.OK);
         } catch (Exception e) {
             e.printStackTrace();
@@ -147,21 +114,7 @@ public class LoginOperation {
     }
 
     public ResponseEntity<Object> deleteAccount(HttpServletRequest request, HttpServletResponse response) {
-        HttpSession httpSession = request.getSession();
-        Session session = sessionRepository.findById(httpSession.getId()).get();
-        User user = session.getUser();
-        ResponseEntity<Object> logout = logout(request, response);
-        if (!Constants.adminUsername.equals(user.getUsername())) {
-            sessionRepository.findByUsername(httpSession.getId())
-                    .forEach(x -> x.setUser(null));
-            userRepository.deleteById(user.getId());
-        }
-        websocketController.updateAllUserLists(user.getUsername());
-        return logout;
+    	return new ResponseEntity<Object>("Implementation pending!", HttpStatus.OK);
     }
 
-	
-	private User getUser(HttpSession session) {
-        return sessionRepository.findById(session.getId()).get().getUser();
-    }
 }

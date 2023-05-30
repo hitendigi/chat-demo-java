@@ -24,7 +24,8 @@
 	        	console.log(data);
 	        	
 	        	// Set login user 
-	        	$('#loginuser').html("Logged in as " + data.username)
+	        	$('#loginuser').html("Logged in as " + data.username + 
+	        			"   <a href='#' onclick='logout()';>Logout</a>")
 	        	
 	        	$('#loginbox').hide()
 	        	$('#chatbox').show()
@@ -35,6 +36,24 @@
 	            // handle your error logic here
 	        }
 	    });
+	}
+	
+	function logout(){
+		$.ajax({
+	  	    url: "https://localhost:8888/api/auth/logout?token="+accessToken,
+		        type: "GET",
+		        contentType: "application/json",
+		        dataType: "json",
+		        crossDomain: true,
+		        success: function (data) {
+		        	console.log('Successfully logout!')	
+		        },
+		        error: function (err) {
+		            // handle your error logic here	
+		        	console.log(err)
+		        }
+		    });
+		location.reload();
 	}
 	
 	function displayUserList(websocketJsonResponseData){
