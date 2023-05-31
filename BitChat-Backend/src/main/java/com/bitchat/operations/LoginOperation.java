@@ -54,7 +54,7 @@ public class LoginOperation {
      * @param loginRequest
      * @return
      */
-    public ResponseEntity<?> signin(HttpServletRequest request, HttpServletResponse response, LoginRequest loginRequest) {
+    public ResponseEntity<Object> signin(LoginRequest loginRequest) {
 
 		Authentication authentication = authenticationManager.authenticate(
 				new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getName()));
@@ -77,12 +77,12 @@ public class LoginOperation {
      * @param signUpRequest
      * @return
      */
-	public ResponseEntity<?> signup(SignupRequest signUpRequest) {
-		if (userRepository.existsByUsername(signUpRequest.getUsername())) {
+	public ResponseEntity<Object> signup(SignupRequest signUpRequest) {
+		if (Boolean.TRUE.equals(userRepository.existsByUsername(signUpRequest.getUsername()))) {
 			return ResponseEntity.badRequest().body("Error: username is already taken!");
 		}
 
-		if (userRepository.existsByEmail(signUpRequest.getEmail())) {
+		if (Boolean.TRUE.equals(userRepository.existsByEmail(signUpRequest.getEmail()))) {
 			return ResponseEntity.badRequest().body("Error: Email is already in use!");
 		}
 
@@ -103,7 +103,7 @@ public class LoginOperation {
 	 * @return
 	 */
 	public ResponseEntity<Object> resetPassword(HttpServletRequest request, HttpServletResponse response, Map<String, String> params) {
-         return new ResponseEntity<Object>("Implementation pending!", HttpStatus.OK);
+         return new ResponseEntity<>("Implementation pending!", HttpStatus.OK);
     }
 		
 	/**
@@ -112,13 +112,13 @@ public class LoginOperation {
 	 * @param response
 	 * @return
 	 */
-	public ResponseEntity<Object> logout(HttpServletRequest request, HttpServletResponse response) {
+	public ResponseEntity<Object> logout(HttpServletRequest request) {
         try {
         	websocketController.logout(request);
-            return new ResponseEntity<Object>("Logout Successfully!", HttpStatus.OK);
+            return new ResponseEntity<>("Logout Successfully!", HttpStatus.OK);
         } catch (Exception e) {
             e.printStackTrace();
-            return new ResponseEntity<Object>(HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
     }
 
@@ -129,7 +129,7 @@ public class LoginOperation {
 	 * @return
 	 */
     public ResponseEntity<Object> deleteAccount(HttpServletRequest request, HttpServletResponse response) {
-    	return new ResponseEntity<Object>("Implementation pending!", HttpStatus.OK);
+    	return new ResponseEntity<>("Implementation pending!", HttpStatus.OK);
     }
 
 }

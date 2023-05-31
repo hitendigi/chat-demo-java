@@ -3,7 +3,6 @@ package com.bitchat.model;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Table;
-import javax.persistence.Transient;
 
 @Entity
 @Table(name = "Users") // because a table with this class name may exist (reserved names)
@@ -37,7 +36,8 @@ public class User extends BaseModel implements Comparable<User> {
     }
     
     public static String validateName(String s) {
-        int lb = 1, ub = 90;
+        int lb = 1;
+        int ub = 90;
         if (s.length() < lb || s.length() > ub) {
             return "Name must be at least " + lb + " at most " + ub + " characters";
         } else {
@@ -49,7 +49,8 @@ public class User extends BaseModel implements Comparable<User> {
     }
 
     public static String validateUsername(String s) {
-        int lb = 1, ub = 90;
+        int lb = 1;
+        int ub = 90;
         if (s.length() < lb || s.length() > ub) {
             return "Username must be at least " + lb + " at most " + ub + " characters";
         } else {
@@ -61,7 +62,8 @@ public class User extends BaseModel implements Comparable<User> {
     }
 
     public static String validatePassword(String s) {
-        int lb = 6, ub = 90;
+        int lb = 6;
+        int ub = 90;
         if (s.length() < lb || s.length() > ub) {
             return "Passwords must be at least " + lb + " at most " + ub + " characters";
         } else {
@@ -97,11 +99,7 @@ public class User extends BaseModel implements Comparable<User> {
 
     @Override
     public int compareTo(User user) {
-        return getPresentation().compareTo(user.getPresentation());
-    }
-
-    public String getPresentation() {
-        return name;
+        return getName().compareTo(user.getName());
     }
 
 	public String getPassword() {

@@ -6,6 +6,7 @@ import com.bitchat.model.Session;
 import com.bitchat.model.User;
 
 import java.util.*;
+import java.util.Map.Entry;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
@@ -29,9 +30,9 @@ public class SessionRepository {
     }
     
     public List<Session> findAll(){
-    	List<Session> sessionList = new ArrayList<Session>();
-    	for (String id : map.keySet()) {
-           sessionList.add(map.get(id));
+    	List<Session> sessionList = new ArrayList<>();
+    	for (Entry<String, Session> sessionEntryMap : map.entrySet()) {
+           sessionList.add(sessionEntryMap.getValue());
         }
     	return sessionList;
     }
@@ -73,9 +74,9 @@ public class SessionRepository {
         try {
             lock.readLock().lock();
             List<Session> list = new ArrayList<>();
-            for (String id : map.keySet()) {
-                if (map.get(id).getLastModified() < l) {
-                    list.add(map.get(id));
+            for (Entry<String, Session> sessionEntryMap : map.entrySet()) {
+                if (sessionEntryMap.getValue().getLastModified() < l) {
+                    list.add(sessionEntryMap.getValue());
                 }
             }
             return list;
@@ -88,10 +89,11 @@ public class SessionRepository {
         try {
             lock.readLock().lock();
             List<Session> list = new ArrayList<>();
-            for (String id : map.keySet()) {
-                User user = map.get(id).getUser();
+            for (Entry<String, Session> sessionEntryMap : map.entrySet()) {
+            	Session session = sessionEntryMap.getValue();
+                User user = session.getUser();
                 if ((user != null) && (user.getUsername().equals(username))) {
-                    list.add(map.get(id));
+                    list.add(session);
                 }
             }
             return list;

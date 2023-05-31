@@ -30,7 +30,7 @@ public class AuthTokenFilter extends OncePerRequestFilter {
 	@Autowired
     private BlackListingService blackListingService;
 
-	private static final Logger logger = LoggerFactory.getLogger(AuthTokenFilter.class);
+	private final Logger authTokenFilterLogger = LoggerFactory.getLogger(AuthTokenFilter.class);
 
 	@Override
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -39,7 +39,7 @@ public class AuthTokenFilter extends OncePerRequestFilter {
 			String jwt = parseJwt(request);
 			String blackListedToken = blackListingService.getJwtBlackList(jwt);
             if (blackListedToken != null) {
-            	logger.error("JwtInterceptor: Token is blacklisted");
+            	authTokenFilterLogger.error("JwtInterceptor: Token is blacklisted");
             	response.sendError(401);
             	return;
             }else{
@@ -55,7 +55,7 @@ public class AuthTokenFilter extends OncePerRequestFilter {
 				}
             }
 		} catch (Exception e) {
-			logger.error("Cannot set user authentication: {}", e);
+			authTokenFilterLogger.error("Cannot set user authentication: {}", e);
 		}
 
 		filterChain.doFilter(request, response);

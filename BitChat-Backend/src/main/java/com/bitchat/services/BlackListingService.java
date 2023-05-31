@@ -7,7 +7,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class BlackListingService {
 
-	public final static String BLACKLIST_CACHE_NAME = "jwt-black-list";
+	public static final String BLACKLIST_CACHE_NAME = "jwt-black-list";
 	
     @CachePut(BLACKLIST_CACHE_NAME)
     public String blackListJwt(String jwt) {

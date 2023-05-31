@@ -27,18 +27,18 @@ public class LoginController {
     LoginOperation loginOperation;
 
 	@PostMapping("/signin")
-	public ResponseEntity<?> signin(HttpServletRequest request, HttpServletResponse response, @RequestBody LoginRequest loginRequest) {
-		return loginOperation.signin(request, response, loginRequest);
+	public ResponseEntity<Object> signin(@RequestBody LoginRequest loginRequest) {
+		return loginOperation.signin(loginRequest);
 	}
 
 	@PostMapping("/signup")
-	public ResponseEntity<?> signup(@RequestBody SignupRequest signUpRequest) {
+	public ResponseEntity<Object> signup(@RequestBody SignupRequest signUpRequest) {
 		return loginOperation.signup(signUpRequest);
 	}
 	
 	@GetMapping("/logout")
-    public ResponseEntity<Object> logout(HttpServletRequest request, HttpServletResponse response) {
-        return loginOperation.logout(request, response);
+    public ResponseEntity<Object> logout(HttpServletRequest request) {
+        return loginOperation.logout(request);
     }
 	
 	@PostMapping("/resetpassword")

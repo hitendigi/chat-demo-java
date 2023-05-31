@@ -2,8 +2,6 @@ package com.bitchat.response;
 
 import java.util.UUID;
 
-import com.bitchat.model.Messages;
-
 public class UserResponse {
 
 	private UUID id;

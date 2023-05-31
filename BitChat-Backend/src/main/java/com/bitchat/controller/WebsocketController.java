@@ -69,7 +69,7 @@ public class WebsocketController implements WebSocketHandler {
             Session session = getSession(wss);
             
             if(session != null){
-            	logger.info("Found session for user : " + session.getUser().getUsername() +". Websocket connection established!");
+            	logger.info("Websocket connection established!. Found session for user : {}", session.getUser().getUsername());
             	
             	session.setWebSocketSession(wss);
             	WebsocketResponse websocketResponse = new WebsocketResponse();
@@ -97,7 +97,7 @@ public class WebsocketController implements WebSocketHandler {
     		
     		UUID senderUserID = session.getUser().getId();
         	UUID receiverUserID = user.getId();
-        	List<UUID> listOfUserIDs = new ArrayList<UUID>();
+        	List<UUID> listOfUserIDs = new ArrayList<>();
         	listOfUserIDs.add(senderUserID);
         	listOfUserIDs.add(receiverUserID);
         	List<Messages> messages = messagesRepository.findBySenderUserIDInAndReceiverUserIDInOrderByDateAsc(listOfUserIDs, listOfUserIDs);
@@ -144,7 +144,7 @@ public class WebsocketController implements WebSocketHandler {
      */
     private void sendResponseToWebSocket(String reponseBody, WebSocketSession wss) throws IOException{
     	Session session = getSession(wss);
-    	logger.info("Sending response to user : " + session.getUser().getUsername());
+    	logger.info("Sending response to user : {}", session.getUser().getUsername());
     	session.getWebSocketSession().sendMessage(new TextMessage(reponseBody));
     }
     
@@ -158,7 +158,7 @@ public class WebsocketController implements WebSocketHandler {
     		lock.lock();
             Session currentSession = getSession(wss);
             User currentUser = currentSession.getUser();
-            logger.info("Received websocket request from user : " + currentUser.getUsername() + ". Request : " + webSocketMessage);
+            logger.info("Received websocket request from user : {}. Request : {}", currentUser.getUsername(), webSocketMessage);
             
             String payload = ((TextMessage) webSocketMessage).getPayload();
             MessageRequest messageRequest = new Gson().fromJson(payload, MessageRequest.class);
@@ -230,7 +230,7 @@ public class WebsocketController implements WebSocketHandler {
     private void fetchMessage(WebSocketSession wss, User currentUser, MessageRequest messageRequest) throws IOException{
     	UUID senderUserID = currentUser.getId();
     	UUID receiverUserID = messageRequest.getUserId();
-    	List<UUID> listOfUserIDs = new ArrayList<UUID>();
+    	List<UUID> listOfUserIDs = new ArrayList<>();
     	listOfUserIDs.add(senderUserID);
     	listOfUserIDs.add(receiverUserID);
     	List<Messages> messages = messagesRepository.findBySenderUserIDInAndReceiverUserIDInOrderByDateAsc(listOfUserIDs, listOfUserIDs);
@@ -278,6 +278,7 @@ public class WebsocketController implements WebSocketHandler {
      * @param messageRequest
      */
     private void deleteMessage(MessageRequest messageRequest){
+    	logger.info("'Delete' Functionality implementation pending..!!!");
     	
     }
     
@@ -305,12 +306,16 @@ public class WebsocketController implements WebSocketHandler {
 
             // get accesstoken
         	String jwtToken = request.getParameter("token");
-           	Session session = sessionRepository.findById(jwtToken).get();
-           	
-           	// Remove Websocket session
-            removeWebSocketSession(session.getWebSocketSession());
+        	
+        	if(sessionRepository.findById(jwtToken) != null) {
+	           	Session session = sessionRepository.findById(jwtToken).get();
+	           	
+	           	// Remove Websocket session
+	            removeWebSocketSession(session.getWebSocketSession());
+	            
+	            logger.info("Successfully logout for user : " + session.getUser().getUsername());
+        	}
             
-            logger.info("Successfully logout for user : " + session.getUser().getUsername());
         } finally {
             lock.unlock();
         }
@@ -334,20 +339,23 @@ public class WebsocketController implements WebSocketHandler {
     private Session getSession(WebSocketSession wss) {
     	Session session = null;
     	
-    	String requestQueryString = wss.getUri().getQuery();
-    	String jwtToken = requestQueryString.substring(requestQueryString.indexOf('=') + 1, requestQueryString.length());
-       	session = sessionRepository.findById(jwtToken).get();
+    	if(wss.getUri() != null) {
+	    	String requestQueryString = wss.getUri().getQuery();
+	    	String jwtToken = requestQueryString.substring(requestQueryString.indexOf('=') + 1, requestQueryString.length());
+	    	
+	    	if(sessionRepository.findById(jwtToken) != null) {
+	    		session = sessionRepository.findById(jwtToken).get();
+	    	}
+    	}
         return session;
     }
 
 	@Override
 	public void handleTransportError(WebSocketSession session, Throwable exception) throws Exception {
-		// TODO Auto-generated method stub
 	}
 
 	@Override
 	public boolean supportsPartialMessages() {
-		// TODO Auto-generated method stub
 		return false;
 	}
 

@@ -3,10 +3,6 @@ package com.bitchat.response;
 import java.util.Date;
 import java.util.UUID;
 
-import javax.persistence.Column;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-
 import com.bitchat.model.Messages;
 
 public class MessageResponse {
